@@ -41,7 +41,7 @@ def print_word_matrix(docs):
 if __name__ == '__main__':
     file_name = "titles.txt"
     f = open(file_name, "r", encoding="utf-8")
-    out = open(file_name.split('.')[0] + "_vector.txt", "w")
+    out = open(file_name.split('.')[0] + "_vectors.txt", "w")
 
     # load all docs into in-mem list
     # where each element is a list of [doc_id,line]
