@@ -2,13 +2,13 @@ import re
 from stopwords import *
 
 # Returns dictionary of word counts for a text
-def get_word_counts(text):
+def get_word_counts(text, all_words):
     wc={}
     words = get_words(text)
     # Loop over all the entries
 
     for word in words:
-        if word not in stopwords:
+        if (word not in stopwords) and (word in all_words):
             wc[word] = wc.get(word,0)+1
 
     return wc
@@ -47,24 +47,37 @@ if __name__ == '__main__':
     # where each element is a list of [doc_id,line]
     docs = []
     doc_id = 1
-    all_words = set()
+    all_words = {}
 
-    for line in f:
+    # transfer content of a file into a list of lines
+    lines = [line for line in f]
+
+    # create a dictionary of all words and their total counts
+    for line in lines:
         doc_words = get_words(line)
-        for w in doc_words:
+        for w in doc_words :
             if w not in stopwords:
-                all_words.add(w)
-        docs.append(["d"+str(doc_id), get_word_counts(line)])
+                all_words[w] = all_words.get(w,0)+1
+
+    all_words_clean = set()
+    for w, count in all_words.items():
+        if all_words[w] > 1 :
+            all_words_clean.add(w)
+
+
+    for line in lines:
+        docs.append(["d"+str(doc_id), get_word_counts(line,all_words_clean)])
         doc_id += 1
+    print_word_matrix(docs)
 
-    all_words = list(all_words)
-
+    all_words = list(all_words_clean)
     print(all_words)
+
     for w in all_words:
         out.write('\t' + w)
     out.write('\n')
 
-    print_word_matrix(docs)
+    # print_word_matrix(docs)
     for i in range(len(docs)):
         docs[i][1] = get_word_vector(all_words, docs[i][1])
         out.write(docs[i][0])
@@ -72,7 +85,7 @@ if __name__ == '__main__':
             out.write('\t' + str(x))
         out.write('\n')
 
-    print_word_matrix(docs)
+    # print_word_matrix(docs)
 
 
 

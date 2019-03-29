@@ -7,7 +7,8 @@ def readfile(file_name):
     lines=[line for line in f]
   
     # First line is the column titles
-    colnames=lines[0].strip().split('\t')[1:]
+    colnames=lines[0].strip().split('\t')[:]
+    print(colnames)
     rownames=[]
     data=[]
     for line in lines[1:]:
@@ -89,7 +90,7 @@ def pearson(v1,v2):
     # Calculate r (Pearson score)
     num=pSum-(sum1*sum2/len(v1))
     den=sqrt((sum1Sq-pow(sum1,2)/len(v1))*(sum2Sq-pow(sum2,2)/len(v1)))
-    if den==0: return 0
+    if den==0: return 1.0
   
     return 1.0-num/den
 

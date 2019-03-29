@@ -14,7 +14,7 @@ for i in range(1, len(data)+1):
     similarity_matrix[i].append(docs[i-1])
     similarity_matrix[i].extend([' '*6]*len(data))
 
-print("Pearson distance between documents")
+print("Pearson correlation between documents")
 for i in range (len(data) - 1):
     for j in range (i+1, len(data)):
         dist=distance_func(data[i],data[j])
