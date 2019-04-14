@@ -9,14 +9,15 @@ with open('country_dimensions.csv') as csvfile:
             continue
         data.append(list(line))
 print(data)
-"""
-num_clusters = 5
-print ('Grouping words into {} clusters:'.format(num_clusters))
+
+num_clusters = 8
+print ('Grouping words into {} clusters with bisecting k-means:'.format(num_clusters))
 
 print()
 clust, _, error = bisectingk(data,distance=pearson,k=num_clusters)
 print ('clusters by pearson correlation')
 print ("sum of squared errors:" + str(error))
+print(clust)
 for i in range(num_clusters):
     print("cluster {}".format(i+1))
     print([data[r][1] for r in clust[i]])
@@ -44,34 +45,25 @@ print ("sum of squared errors:" + str(error))
 for i in range(num_clusters):
     print("cluster {}".format(i+1))
     print([data[r][1] for r in clust[i]])
-"""
-num_clusters = 5
-print ('Grouping words into {} clusters:'.format(num_clusters))
+
+print ('Grouping words into {} clusters with hierarchical clustering:'.format(num_clusters))
 
 print()
 clust = hcluster(data,distance=pearson)
-print ('clusters by pearson correlation')
-for i in range(num_clusters):
-    print("cluster {}".format(i+1))
-    print([data[r][1] for r in clust[i]])
+print('clusters by pearson correlation')
+drawdendrogram(clust, [row[0] for row in data], "hclusters_pearson.jpg")
 
 print()
 clust = hcluster(data,distance=tanimoto)
 print ('clusters by tanimoto coefficient')
-for i in range(num_clusters):
-    print("cluster {}".format(i+1))
-    print([data[r][1] for r in clust[i]])
+drawdendrogram(clust, [row[0] for row in data], "hclusters_tanimoto.jpg")
 
 print()
 clust = hcluster(data,distance=euclidean)
 print ('clusters by euclidean distance')
-for i in range(num_clusters):
-    print("cluster {}".format(i+1))
-    print([data[r][1] for r in clust[i]])
+drawdendrogram(clust, [row[0] for row in data], "hclusters_euclidean.jpg")
 
 print()
 clust = hcluster(data,distance=cosine)
 print ('clusters by cosine distance')
-for i in range(num_clusters):
-    print("cluster {}".format(i+1))
-    print([data[r][1] for r in clust[i]])
+drawdendrogram(clust, [row[0] for row in data], "hclusters_cosine.jpg")

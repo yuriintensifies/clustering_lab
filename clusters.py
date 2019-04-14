@@ -1,8 +1,8 @@
 from PIL import Image,ImageDraw
 from math import *
 import random
-import numpy as np
 import operator
+import sys
 
 def readfile(file_name):
     f = open(file_name)
@@ -129,53 +129,34 @@ class bicluster:
 
 
 def hcluster(rows,distance=euclidean):
-    if type(rows[0][0]) == str:
-        if str.isalpha(rows[0][0]):
-            print("hey")
-            rowcopy = [row[2:] for row in rows]
-        else: rowcopy = rows
-    else: rowcopy = rows
-
-    for j, row in enumerate(rowcopy):
-        for n in range(len(row)):
-            try:
-                row[n] = int(row[n])
-            except:
-                continue
-
     distances={}
     currentclustid=-1
+    rowcopy = [row[2:] for row in rows]
+    sums = [0]*len(rowcopy[0])
+    avgs = []
+    for m, row in enumerate(rowcopy):
+        for n, col in enumerate(row):
+            try: rowcopy[m][n] = int(col)
+            except: continue
+    avgs = [s/len(rowcopy[0]) for s in sums]
+    for m, row in enumerate(rowcopy):
+        for n, col in enumerate(row):
+            if col == '':
+                rowcopy[m][n] = avgs[n]
 
     # Clusters are initially just the rows
     clust=[bicluster(rowcopy[i],id=i) for i in range(len(rowcopy))]
 
     while len(clust)>1:
         lowestpair=(0,1)
-        acluster = []
-        bcluster = []
-        for n in range(len(clust[0].vec)):
-            if clust[0].vec[n] == '' or clust[1].vec[n] == '':
-                continue
-            acluster.append(clust[0].vec[n])
-            bcluster.append(clust[1].vec[n])
-        if acluster == []:
-            continue
-        closest=distance(acluster,bcluster)
+        closest=distance(clust[0].vec,clust[1].vec)
+
         # loop through every pair looking for the smallest distance
         for i in range(len(clust)):
             for j in range(i+1,len(clust)):
                 # distances is the cache of distance calculations
                 if (clust[i].id,clust[j].id) not in distances:
-                    acluster = []
-                    bcluster = []
-                    for n in range(len(clust[i].vec)):
-                        if clust[i].vec[n] == '' or clust[j].vec[n] == '':
-                            continue
-                        acluster.append(clust[i].vec[n])
-                        bcluster.append(clust[j].vec[n])
-                    if acluster == []:
-                        continue
-                    distances[(clust[i].id,clust[j].id)]=distance(acluster,bcluster)
+                    distances[(clust[i].id,clust[j].id)]=distance(clust[i].vec,clust[j].vec)
 
                 d=distances[(clust[i].id,clust[j].id)]
 
@@ -184,17 +165,9 @@ def hcluster(rows,distance=euclidean):
                     lowestpair=(i,j)
 
         # calculate the average of the two clusters
-        mergevec = []
-        for i in range(len(clust[0].vec)):
-            a = clust[lowestpair[0]].vec[i]
-            b = clust[lowestpair[1]].vec[i]
-            if a == '':
-                mergevec.append(b)
-                continue
-            if b == '':
-                mergevec.append(a)
-                continue
-            mergevec.append((a+b)/2)
+        mergevec=[
+            (clust[lowestpair[0]].vec[i]+clust[lowestpair[1]].vec[i])/2.0
+                    for i in range(len(clust[0].vec))]
 
         # create the new cluster
         newcluster=bicluster(mergevec,left=clust[lowestpair[0]],
@@ -206,11 +179,8 @@ def hcluster(rows,distance=euclidean):
         del clust[lowestpair[1]]
         del clust[lowestpair[0]]
         clust.append(newcluster)
-        print("help")
 
-    print(clust[0])
     return clust[0]
-
 
 def printhclust(clust,labels=None,n=0):
     # indent to make a hierarchy layout
@@ -222,7 +192,8 @@ def printhclust(clust,labels=None,n=0):
     else:
     # positive id means that this is an endpoint
         if labels==None: print (clust.id)
-        else: print (labels[clust.id])
+        else:
+            print(labels[clust.id])
 
     # now print the right and left branches
     if clust.left!=None: printhclust(clust.left,labels=labels,n=n+1)
@@ -303,6 +274,7 @@ def kcluster(rows,distance=euclidean,k=2):
         else: rowcopy = rows
     else: rowcopy = rows
     for i in range(len(rowcopy[0])):
+        sys.stdout.flush()
         runningmin = int(rowcopy[0][i])
         runningmax = int(rowcopy[0][i])
         for j, row in enumerate(rowcopy):
@@ -394,11 +366,12 @@ def bisectingk(rows, distance, k):
     else: rowcopy = rows
     bestmatches, coordinates = kcluster(rows, distance, 2)
     k -= 1
-    totalsse = 0
     while k > 1:
         lcluster = []
         lerror = 0
         clusterind = 0
+
+        totalsse = 0
 
         for r in range(len(bestmatches)):
             sumsq = sse(coordinates[r], [rowcopy[num] for num in range(len(bestmatches[r]))])
@@ -411,6 +384,9 @@ def bisectingk(rows, distance, k):
             lcluster.append(rowcopy[member])
 
         bestmatches2, coordinates2 = kcluster(lcluster, distance, 2)
+        for h, cluster in enumerate(bestmatches2):
+            for i, member in enumerate(cluster):
+                bestmatches2[h][i] = bestmatches[clusterind][member]
         del bestmatches[clusterind]
         del coordinates[clusterind]
         bestmatches = bestmatches + bestmatches2
