@@ -9,12 +9,9 @@ with open('country_dimensions.csv') as csvfile:
         if row == 0:
             continue
         data.append(list(line))
-print(data)
 
 num_clusters = 6
 print ('Grouping words into {} clusters with bisecting k-means:'.format(num_clusters))
-
-
 
 print()
 clust, _, error = bisectingk(data,distance=pearson,k=num_clusters)
