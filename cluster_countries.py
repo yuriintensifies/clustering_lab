@@ -1,5 +1,6 @@
 from clusters import *
 import csv
+import json
 
 data = []
 with open('country_dimensions.csv') as csvfile:
@@ -10,8 +11,10 @@ with open('country_dimensions.csv') as csvfile:
         data.append(list(line))
 print(data)
 
-num_clusters = 8
+num_clusters = 6
 print ('Grouping words into {} clusters with bisecting k-means:'.format(num_clusters))
+
+
 
 print()
 clust, _, error = bisectingk(data,distance=pearson,k=num_clusters)
@@ -22,13 +25,19 @@ for i in range(num_clusters):
     print("cluster {}".format(i+1))
     print([data[r][1] for r in clust[i]])
 
-print()
-clust, _, error = bisectingk(data,distance=tanimoto,k=num_clusters)
-print ('clusters by tanimoto coefficient')
-print ("sum of squared errors:" + str(error))
+results = []
 for i in range(num_clusters):
-    print("cluster {}".format(i+1))
-    print([data[r][1] for r in clust[i]])
+    results.append([data[r][1] for r in clust[i]])
+fresults = [["Region", "Cluster"]]
+for n, cluster in enumerate(results):
+    for country in cluster:
+        fresults.append([country, n])
+
+jresults = json.dumps(fresults)
+with open('data.js', 'w') as output:
+    output.write("var results =")
+    output.write(jresults)
+
 
 print()
 clust, _, error = bisectingk(data,distance=euclidean,k=num_clusters)
@@ -46,6 +55,7 @@ for i in range(num_clusters):
     print("cluster {}".format(i+1))
     print([data[r][1] for r in clust[i]])
 
+"""
 print ('Grouping words into {} clusters with hierarchical clustering:'.format(num_clusters))
 
 print()
@@ -67,3 +77,4 @@ print()
 clust = hcluster(data,distance=cosine)
 print ('clusters by cosine distance')
 drawdendrogram(clust, [row[0] for row in data], "hclusters_cosine.jpg")
+"""
