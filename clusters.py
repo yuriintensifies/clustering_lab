@@ -1,6 +1,8 @@
 from PIL import Image,ImageDraw
 from math import *
 import random
+import numpy as np
+import operator
 
 def readfile(file_name):
     f = open(file_name)
@@ -37,71 +39,81 @@ def print_2d_array(matrix):
 
 
 # different similarity metrics for 2 vectors
-def manhattan(v1,v2):
+def manhattan(cluster,row):
+    cluster = []
+    row = []
+    for n, val in enumerate(row):
+        if val == -1:
+            continue
+        cluster.append(cluster[n])
+        row.append(val)
+
     res=0
-    dimensions=min(len(v1),len(v2))
+    dimensions=min(len(cluster),len(row))
 
     for i in range(dimensions):
-        res+=abs(v1[i]-v2[i])
+        res+=abs(cluster[i]-row[i])
 
     return res
 
 
-def euclidean(v1,v2):
+def euclidean(cluster,row):
     res=0
-    dimensions=min(len(v1),len(v2))
+    dimensions=min(len(cluster),len(row))
     for i in range(dimensions):
-        res+=pow(abs(v1[i]-v2[i]),2)
+        res+=pow(abs(cluster[i]-row[i]),2)
 
     return sqrt(float(res))
 
 
-def cosine(v1,v2):
+def cosine(cluster,row):
     dotproduct=0
-    dimensions=min(len(v1),len(v2))
+    dimensions=min(len(cluster),len(row))
 
     for i in range(dimensions):
-        dotproduct+=v1[i]*v2[i]
+        dotproduct+=cluster[i]*row[i]
 
-    v1len=0
-    v2len=0
-    for i in range (dimensions):
-        v1len+=v1[i]*v1[i]
-        v2len+=v2[i]*v2[i]
+    clusterlen=0
+    rowlen=0
+    for i in range(dimensions):
+        clusterlen+=cluster[i]*cluster[i]
+        rowlen+=row[i]*row[i]
 
-    v1len=sqrt(v1len)
-    v2len=sqrt(v2len)
+    clusterlen=sqrt(clusterlen)
+    rowlen=sqrt(rowlen)
 
-    return 1.0-(float(dotproduct)/(v1len*v2len))
+    return 1.0-(float(dotproduct)/(clusterlen*rowlen+0.0001))
   
 
-def pearson(v1,v2):
+def pearson(cluster,row):
     # Simple sums
-    sum1=sum(v1)
-    sum2=sum(v2)
+    sum1=sum(cluster)
+    sum2=sum(row)
   
     # Sums of the squares
-    sum1Sq=sum([pow(v,2) for v in v1])
-    sum2Sq=sum([pow(v,2) for v in v2])
+    sum1Sq=sum([pow(v,2) for v in cluster])
+    sum2Sq=sum([pow(v,2) for v in row])
   
     # Sum of the products
-    pSum=sum([v1[i]*v2[i] for i in range(min(len(v1),len(v2)))])
+    pSum=sum([cluster[i]*row[i] for i in range(min(len(cluster),len(row)))])
   
     # Calculate r (Pearson score)
-    num=pSum-(sum1*sum2/len(v1))
-    den=sqrt((sum1Sq-pow(sum1,2)/len(v1))*(sum2Sq-pow(sum2,2)/len(v1)))
+    num=pSum-(sum1*sum2/len(cluster))
+    den=sqrt((sum1Sq-pow(sum1,2)/len(cluster))*(sum2Sq-pow(sum2,2)/len(cluster)))
     if den==0: return 1.0
-  
+
+
     return 1.0-num/den
 
 
-def tanimoto(v1,v2):
+def tanimoto(cluster,row):
+
     c1,c2,shr=0,0,0
 
-    for i in range(len(v1)):
-        if v1[i]!=0: c1+=1 # in v1
-        if v2[i]!=0: c2+=1 # in v2
-        if v1[i]!=0 and v2[i]!=0: shr+=1 # in both
+    for i in range(len(cluster)):
+        if cluster[i]!=0: c1+=1 # in cluster
+        if row[i]!=0: c2+=1 # in row
+        if cluster[i]!=0 and row[i]!=0: shr+=1 # in both
 
     return 1.0-(float(shr)/(c1+c2-shr))
 
@@ -117,22 +129,53 @@ class bicluster:
 
 
 def hcluster(rows,distance=euclidean):
+    if type(rows[0][0]) == str:
+        if str.isalpha(rows[0][0]):
+            print("hey")
+            rowcopy = [row[2:] for row in rows]
+        else: rowcopy = rows
+    else: rowcopy = rows
+
+    for j, row in enumerate(rowcopy):
+        for n in range(len(row)):
+            try:
+                row[n] = int(row[n])
+            except:
+                continue
+
     distances={}
     currentclustid=-1
 
     # Clusters are initially just the rows
-    clust=[bicluster(rows[i],id=i) for i in range(len(rows))]
+    clust=[bicluster(rowcopy[i],id=i) for i in range(len(rowcopy))]
 
     while len(clust)>1:
         lowestpair=(0,1)
-        closest=distance(clust[0].vec,clust[1].vec)
-
+        acluster = []
+        bcluster = []
+        for n in range(len(clust[0].vec)):
+            if clust[0].vec[n] == '' or clust[1].vec[n] == '':
+                continue
+            acluster.append(clust[0].vec[n])
+            bcluster.append(clust[1].vec[n])
+        if acluster == []:
+            continue
+        closest=distance(acluster,bcluster)
         # loop through every pair looking for the smallest distance
         for i in range(len(clust)):
             for j in range(i+1,len(clust)):
                 # distances is the cache of distance calculations
                 if (clust[i].id,clust[j].id) not in distances:
-                    distances[(clust[i].id,clust[j].id)]=distance(clust[i].vec,clust[j].vec)
+                    acluster = []
+                    bcluster = []
+                    for n in range(len(clust[i].vec)):
+                        if clust[i].vec[n] == '' or clust[j].vec[n] == '':
+                            continue
+                        acluster.append(clust[i].vec[n])
+                        bcluster.append(clust[j].vec[n])
+                    if acluster == []:
+                        continue
+                    distances[(clust[i].id,clust[j].id)]=distance(acluster,bcluster)
 
                 d=distances[(clust[i].id,clust[j].id)]
 
@@ -141,9 +184,17 @@ def hcluster(rows,distance=euclidean):
                     lowestpair=(i,j)
 
         # calculate the average of the two clusters
-        mergevec=[
-            (clust[lowestpair[0]].vec[i]+clust[lowestpair[1]].vec[i])/2.0
-                    for i in range(len(clust[0].vec))]
+        mergevec = []
+        for i in range(len(clust[0].vec)):
+            a = clust[lowestpair[0]].vec[i]
+            b = clust[lowestpair[1]].vec[i]
+            if a == '':
+                mergevec.append(b)
+                continue
+            if b == '':
+                mergevec.append(a)
+                continue
+            mergevec.append((a+b)/2)
 
         # create the new cluster
         newcluster=bicluster(mergevec,left=clust[lowestpair[0]],
@@ -155,7 +206,9 @@ def hcluster(rows,distance=euclidean):
         del clust[lowestpair[1]]
         del clust[lowestpair[0]]
         clust.append(newcluster)
+        print("help")
 
+    print(clust[0])
     return clust[0]
 
 
@@ -241,29 +294,63 @@ def drawnode(draw,clust,x,y,scaling,labels):
 
 
 # k-means clustering
-def kcluster(rows,distance=euclidean,k=4):
+def kcluster(rows,distance=euclidean,k=2):
     # Determine the minimum and maximum values for each point
-    ranges=[(min([row[i] for row in rows]),max([row[i] for row in rows]))
-    for i in range(len(rows[0]))]
+    ranges = []
+    if type(rows[0][0]) == str:
+        if str.isalpha(rows[0][0]):
+            rowcopy = [row[2:] for row in rows]
+        else: rowcopy = rows
+    else: rowcopy = rows
+    for i in range(len(rowcopy[0])):
+        runningmin = int(rowcopy[0][i])
+        runningmax = int(rowcopy[0][i])
+        for j, row in enumerate(rowcopy):
+            for n in range(len(row)):
+                try: row[n] = int(row[n])
+                except:
+                    row[n] = -1
+                    continue
+            if type(row[i]) != int:
+                continue
+            if row[i] < runningmin:
+                runningmin = row[i]
+            if row[i] > runningmax:
+                runningmax = row[i]
+        ranges.append((runningmin, runningmax))
 
+    #ranges=[(min([row[i] for row in rows]),max([row[i] for row in rows]))
+    #for i in range(len(rows[0]))]
+
+    #for j in range(k):
+    #    for i in range(len(rows[0])):
+    #        clusters.append([random.random()])
     # Create k randomly placed centroids
-    clusters=[[random.random()*(ranges[i][1]-ranges[i][0])+ranges[i][0]
-    for i in range(len(rows[0]))] for j in range(k)]
-  
-    lastmatches=None
+
+    clusters=[[random.random()*(ranges[i][1]-ranges[i][0])+ranges[i][0] for i in range(len(rowcopy[0]))] for j in range(k)]
+
+    lastmatches = None
     bestmatches = None
 
     for t in range(100):
-        print ('Iteration %d' % t)
         bestmatches=[[] for i in range(k)]
-    
+
         # Find which centroid is the closest for each row
-        for j in range(len(rows)):
-            row=rows[j]
-            bestmatch=0
+        for j in range(len(rowcopy)):
+            row=rowcopy[j]
+            bestmatch = 0
             for i in range(k):
-                d=distance(clusters[i],row)
-                if d<distance(clusters[bestmatch],row): bestmatch=i
+                ncluster = []
+                bcluster = []
+                nrow = []
+                for n, val in enumerate(row):
+                    if val == -1:
+                        continue
+                    ncluster.append((clusters[i])[n])
+                    bcluster.append((clusters[bestmatch][n]))
+                    nrow.append(val)
+                d = distance(ncluster,nrow)
+                if d<distance(bcluster,nrow): bestmatch=i
             bestmatches[bestmatch].append(j)
 
         # If the results are the same as last time, this is complete
@@ -272,16 +359,66 @@ def kcluster(rows,distance=euclidean,k=4):
     
         # Move the centroids to the average of their members
         for i in range(k):
-            avgs=[0.0]*len(rows[0])
+            avgs=[0.0]*(len(rowcopy[0]))
             if len(bestmatches[i])>0:
                 for rowid in bestmatches[i]:
-                    for m in range(len(rows[rowid])):
-                        avgs[m]+=rows[rowid][m]
+                    for m, val in enumerate(rowcopy[rowid]):
+                        if val == -1:
+                            continue
+                        avgs[m]+= val
                 for j in range(len(avgs)):
                     avgs[j]/=len(bestmatches[i])
                 clusters[i]=avgs
-      
-    return bestmatches
+    return bestmatches, clusters
+
+def sse(cluster, members):
+    total = 0
+    for member in members:
+        ccopy = []
+        cmember = []
+        for n, val in enumerate(member):
+            if val == '':
+                continue
+            ccopy.append(cluster[n])
+            cmember.append(member[n])
+        cmember = list(map(int, cmember))
+        oof = list(map(operator.sub, ccopy, cmember))
+        total += sum(list(num*num for num in oof))
+    return total
+
+def bisectingk(rows, distance, k):
+    if type(rows[0][0]) == str:
+        if str.isalpha(rows[0][0]):
+            rowcopy = [row[2:] for row in rows]
+        else: rowcopy = rows
+    else: rowcopy = rows
+    bestmatches, coordinates = kcluster(rows, distance, 2)
+    k -= 1
+    totalsse = 0
+    while k > 1:
+        lcluster = []
+        lerror = 0
+        clusterind = 0
+
+        for r in range(len(bestmatches)):
+            sumsq = sse(coordinates[r], [rowcopy[num] for num in range(len(bestmatches[r]))])
+            if sumsq > lerror:
+                lerror = sumsq
+                clusterind = r
+            totalsse += sumsq
+        totalsse -= lerror
+        for member in bestmatches[clusterind]:
+            lcluster.append(rowcopy[member])
+
+        bestmatches2, coordinates2 = kcluster(lcluster, distance, 2)
+        del bestmatches[clusterind]
+        del coordinates[clusterind]
+        bestmatches = bestmatches + bestmatches2
+        coordinates = coordinates + coordinates2
+        k -= 1
+
+
+    return bestmatches, coordinates, totalsse/k
 
 
 def scaledown(data,distance=pearson,rate=0.01):
